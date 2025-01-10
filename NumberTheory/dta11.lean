@@ -17,7 +17,7 @@ theorem division_algorithm (a b : ℕ) (h : b > 0) : ∃ q r : ℕ, a = b * q + 
 
 
 def order (a p : ℕ) : ℕ :=
-  if h : Prime p ∧ 0 < a ∧ ¬p ∣ a then
+  if h : Prime p ∧ ¬p ∣ a then
     haveI hex : ∃ n : ℕ, n > 0 ∧ a ^ n ≡ 1 [MOD p] := by
       existsi p - 1
       unfold ModEq
@@ -33,35 +33,33 @@ def order (a p : ℕ) : ℕ :=
     Nat.find hex
   else 0
 
-lemma order_one_mod_p (a p : ℕ) (ha : 0 < a ∧ ¬p ∣ a) (hp : Prime p) : a ^ a.order p ≡ 1 [MOD p] := by
-  unfold order
-  rw [dif_pos]
-  simp
-  generalize_proofs h
-  exact (Nat.find_spec h).right
-  constructor
-  exacts [hp, ha]
-
-
-lemma order_gt_zero (a p : ℕ) (ha : 0 < a ∧ ¬p ∣ a) (hp : Prime p) : a.order p > 0 := by
-  unfold order
-  rw [dif_pos]
-  simp
-  constructor
-  exacts [hp, ha]
-
-theorem order_div (a n p : ℕ) (hm : a ^ n ≡ 1 [MOD p]) (ha : 0 < a ∧ ¬p ∣ a) (hn : n > 0) (hp : Prime p) : a.order p ∣ n := by
-  let e := a.order p
-  have : e > 0 := by
-    unfold e order
+lemma order_one_mod_p {a p : ℕ} : a ^ a.order p ≡ 1 [MOD p] := by
+  by_cases h : Prime p ∧ ¬p ∣ a
+  . unfold order
     rw [dif_pos]
     simp
-    constructor
-    exacts [hp, ha]
-  obtain ⟨q, r, hqr, hr⟩ := division_algorithm n e this
+    generalize_proofs h
+    exact (Nat.find_spec h).right
+    exact h
+  . unfold order
+    rw [dif_neg]
+    simp
+    rfl
+    exact h
+
+
+lemma order_gt_zero {a p : ℕ} (ha : ¬p ∣ a) (hp : Prime p) : a.order p > 0 := by
+  unfold order
+  rw [dif_pos]
+  simp
+  constructor
+  exacts [hp, ha]
+
+theorem order_div (a n p : ℕ) (hm : a ^ n ≡ 1 [MOD p]) (ha : ¬p ∣ a) (hn : n > 0) (hp : Prime p) : a.order p ∣ n := by
+  obtain ⟨q, r, hqr, hr⟩ := division_algorithm n (a.order p) (order_gt_zero ha hp)
   have : a ^ r ≡ 1 [MOD p] := by
     have :  (a ^ a.order p) ^ q ≡ 1 [MOD p] := by
-      have : 1 ≡ a ^ a.order p  [MOD p] := by simp [Nat.ModEq.symm, order_one_mod_p a p ha hp]
+      have : 1 ≡ a ^ a.order p  [MOD p] := by simp [Nat.ModEq.symm, order_one_mod_p]
       have : (a ^ a.order p) ^ q ≡ 1 ^ q  [MOD p] := by gcongr
       simp_all
     suffices hs : (a ^ a.order p) ^ q * a ^ r ≡ (a ^ a.order p) ^ q * 1 [MOD p]
@@ -72,12 +70,9 @@ theorem order_div (a n p : ℕ) (hm : a ^ n ≡ 1 [MOD p]) (ha : 0 < a ∧ ¬p �
       . have : (a ^ ((a.order p) * q)).primeFactors = a.primeFactors := by
           apply Nat.primeFactors_pow
           subst hqr
-          simp_all [e]
+          simp
           constructor
-          intro hoz
-          simp_all only [lt_self_iff_false]
-          intro qz
-          linarith
+          repeat linarith
         have : primeFactors p ⊆ primeFactors a := by
           rw [← this]
           apply Nat.primeFactors_mono
@@ -95,20 +90,17 @@ theorem order_div (a n p : ℕ) (hm : a ^ n ≡ 1 [MOD p]) (ha : 0 < a ∧ ¬p �
         rw [← Nat.pow_mul, ← Nat.pow_add]
       apply Nat.ModEq.symm
       apply Nat.ModEq.trans this
-      unfold e at hqr
       rw [← hqr]
       exact hm
   suffices : r = 0
-  . simp_all
+  . simp [hqr, this]
   . by_contra rnz
-    have rge : r > 0 := Nat.pos_of_ne_zero rnz
-    have : e ≤ r := by
-      unfold e order
+    have : a.order p ≤ r := by
+      unfold order
       rw [dif_pos]
       apply Nat.find_min'
-      simp_all
-      constructor
-      exacts [hp, ha]
+      simp [Nat.pos_of_ne_zero rnz, this]
+      exact ⟨hp, ha⟩
     linarith
 
 
