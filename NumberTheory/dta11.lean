@@ -52,46 +52,27 @@ lemma order_gt_zero {a p : ℕ} (ha : ¬p ∣ a) (hp : Prime p) : a.order p > 0 
   unfold order
   rw [dif_pos]
   simp
-  constructor
-  exacts [hp, ha]
+  exact ⟨hp, ha⟩
+
 
 theorem order_div (a n p : ℕ) (hm : a ^ n ≡ 1 [MOD p]) (ha : ¬p ∣ a) (hn : n > 0) (hp : Prime p) : a.order p ∣ n := by
   obtain ⟨q, r, hqr, hr⟩ := division_algorithm n (a.order p) (order_gt_zero ha hp)
-  have : a ^ r ≡ 1 [MOD p] := by
-    have :  (a ^ a.order p) ^ q ≡ 1 [MOD p] := by
-      have : 1 ≡ a ^ a.order p  [MOD p] := by simp [Nat.ModEq.symm, order_one_mod_p]
-      have : (a ^ a.order p) ^ q ≡ 1 ^ q  [MOD p] := by gcongr
-      simp_all
-    suffices hs : (a ^ a.order p) ^ q * a ^ r ≡ (a ^ a.order p) ^ q * 1 [MOD p]
-    . refine Nat.ModEq.cancel_left_of_coprime ?_ hs
-      apply Or.resolve_right (Nat.coprime_or_dvd_of_prime hp ((a ^ a.order p) ^ q))
-      by_contra hneg
-      by_cases qzero : 0 < q
-      . have : (a ^ ((a.order p) * q)).primeFactors = a.primeFactors := by
-          apply Nat.primeFactors_pow
-          subst hqr
-          simp
-          constructor
-          repeat linarith
-        have : primeFactors p ⊆ primeFactors a := by
-          rw [← this]
-          apply Nat.primeFactors_mono
-          rw [Nat.pow_mul]
-          exact hneg
-          simp_all
-          intro hx hy
-          simp_all
-        simp_all
-      . simp_all
-    . simp
-      apply Nat.ModEq.symm
-      apply Nat.ModEq.trans this
-      have : (a ^ a.order p) ^ q * a ^ r ≡ (a ^ (a.order p * q + r)) [MOD p] := by
-        rw [← Nat.pow_mul, ← Nat.pow_add]
-      apply Nat.ModEq.symm
-      apply Nat.ModEq.trans this
-      rw [← hqr]
-      exact hm
+  have : 1 ≡ a ^ r [MOD p] := by
+    calc 1
+      _ ≡ a ^ n [MOD p] := by gcongr
+      _ ≡ a ^ (a.order p * q + r) [MOD p] := by subst n; rfl
+      _ ≡ (a ^ (a.order p)) ^ q * a ^ r [MOD p] := by rw [Nat.pow_add, Nat.pow_mul]
+      _ ≡ 1 ^ q * a ^ r [MOD p] := by
+        apply ModEq.mul
+        clear hqr hr
+        . induction' q with q hq
+          . simp; rfl
+          . repeat rw [Nat.pow_add]
+            apply ModEq.mul
+            exact hq
+            simp [order_one_mod_p]
+        . rfl
+      _ ≡ a ^ r [MOD p] := by simp; rfl
   suffices : r = 0
   . simp [hqr, this]
   . by_contra rnz
@@ -99,10 +80,9 @@ theorem order_div (a n p : ℕ) (hm : a ^ n ≡ 1 [MOD p]) (ha : ¬p ∣ a) (hn 
       unfold order
       rw [dif_pos]
       apply Nat.find_min'
-      simp [Nat.pos_of_ne_zero rnz, this]
+      simp [Nat.pos_of_ne_zero rnz, ModEq.symm, this]
       exact ⟨hp, ha⟩
     linarith
-
 
 
 --@[reducible] def PrimitiveRoot (g n : ℕ) : Prop :=
